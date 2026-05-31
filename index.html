@@ -1,199 +1,385 @@
-
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-.wrap{padding:1rem 0}
-.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:1rem}
-.ctrl-group{display:flex;flex-direction:column;gap:4px}
-.ctrl-group label{font-size:12px;color:var(--color-text-secondary)}
-.ctrl-group input,.ctrl-group textarea{font-size:13px;resize:vertical}
-.ctrl-group textarea{min-height:64px;font-family:var(--font-mono);font-size:11px}
-.btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem}
-.btn{padding:8px 16px;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:13px;font-weight:500;cursor:pointer;color:var(--color-text-primary)}
-.btn:hover{background:var(--color-background-secondary)}
-.btn-dl{background:var(--color-background-success);color:var(--color-text-success);border-color:var(--color-border-success)}
-.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
-.toggle-row label{font-size:13px;color:var(--color-text-secondary)}
-.badge{font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);background:var(--color-background-warning);color:var(--color-text-warning)}
-canvas#poster{display:block;max-width:100%;border-radius:8px;border:0.5px solid var(--color-border-tertiary)}
-#msg{font-size:12px;color:var(--color-text-secondary);margin-top:6px}
-.section-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-</style>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRIS Poster Generator</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --red: #c0272d;
+    --bg: #f5f5f0;
+    --card: #ffffff;
+    --border: #e0e0e0;
+    --text: #1a1a1a;
+    --muted: #666;
+    --success: #2d7d46;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); padding: 20px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--red); letter-spacing: -0.3px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px; }
+  .mode-row { display: flex; gap: 20px; flex-wrap: wrap; }
+  .mode-row label { font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text); }
+  .mode-row input[type=radio] { accent-color: var(--red); }
+  .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl-group label { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .ctrl-group input, .ctrl-group textarea {
+    font-size: 14px; padding: 9px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: #fafafa; color: var(--text);
+    transition: border-color .2s;
+    font-family: var(--font);
+  }
+  .ctrl-group input:focus, .ctrl-group textarea:focus {
+    outline: none; border-color: var(--red); background: #fff;
+  }
+  .ctrl-group textarea { min-height: 80px; resize: vertical; font-family: monospace; font-size: 11px; }
+  .char-hint { font-size: 11px; color: var(--muted); }
+  .char-hint.warn { color: #e07000; font-weight: 600; }
+  .char-hint.ok { color: var(--success); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media(max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn {
+    padding: 10px 20px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all .15s; background: var(--card); color: var(--text);
+  }
+  .btn:hover { background: #f0f0f0; }
+  .btn-primary { background: var(--red); color: #fff; border-color: var(--red); }
+  .btn-primary:hover { background: #a01f24; }
+  .btn-dl { background: #1a6b3a; color: #fff; border-color: #1a6b3a; }
+  .btn-dl:hover { background: #145530; }
+  .debug {
+    font-family: monospace; font-size: 11px; color: var(--muted);
+    word-break: break-all; padding: 10px 14px;
+    border-radius: 8px; border: 1px solid var(--border);
+    background: #fafafa; margin-bottom: 16px; line-height: 1.7;
+  }
+  canvas#poster { display: block; max-width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+  #msg { font-size: 13px; margin-top: 8px; min-height: 20px; }
+  .notice {
+    background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; color: #7a5800; margin-bottom: 12px; line-height: 1.6;
+  }
+  .notice b { color: #5a4000; }
+  #customSection { margin-top: 12px; }
+</style>
+</head>
+<body>
+<h2>🧾 QRIS Poster Generator</h2>
 
-<div class="wrap">
-  <div class="controls">
+<div class="card">
+  <div class="section-label">Sumber QRIS</div>
+  <div class="mode-row">
+    <label><input type="radio" name="mode" value="default" checked onchange="switchMode(this.value)"> Template default (Fx Market)</label>
+    <label><input type="radio" name="mode" value="custom" onchange="switchMode(this.value)"> Tempel QRIS string sendiri</label>
+  </div>
+  <div id="customSection" style="display:none">
+    <div style="height:12px"></div>
     <div class="ctrl-group">
-      <label>Nama merchant</label>
-      <input type="text" id="merchant" value="Fendra Gans">
+      <label>QRIS string (paste di sini)</label>
+      <textarea id="customQr" placeholder="000201010211..." oninput="onCustomInput()"></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-label">Data Merchant</div>
+
+  <div class="grid-3">
+    <div class="ctrl-group">
+      <label>Nama merchant (tampil di poster)</label>
+      <input type="text" id="merchant" value="Fx Market" oninput="updateCharHint()">
+      <span id="charHint" class="char-hint ok">7/25 karakter (QR encode: 7 char)</span>
     </div>
     <div class="ctrl-group">
-      <label>Nominal (kosong = bebas)</label>
+      <label>Nominal (kosong = bebas bayar)</label>
       <input type="number" id="amount" value="" placeholder="misal 10000">
     </div>
     <div class="ctrl-group">
-      <label>NMID</label>
-      <input type="text" id="nmid" value="ID1111111111111">
+      <label>NMID (tampilan poster)</label>
+      <input type="text" id="nmid" value="ID1023300941557">
     </div>
   </div>
-
-  <div class="toggle-row">
-    <label>
-      <input type="checkbox" id="customQrToggle" onchange="toggleCustomQr()">
-      Gunakan QRIS string sendiri
-    </label>
-  </div>
-
-  <div id="customQrSection" style="display:none;margin-bottom:1rem">
-    <div class="section-label">QRIS string kustom</div>
-    <textarea id="customQr" placeholder="Tempel QRIS string lengkap di sini (00020101...)"></textarea>
-    <div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">Jika diisi, QR akan dibuat langsung dari string ini. Nama merchant, nominal, dan NMID di atas tetap digunakan untuk tampilan poster saja.</div>
-  </div>
-
-  <div class="btns">
-    <button class="btn" onclick="buildPoster()">Update poster</button>
-    <button class="btn btn-dl" onclick="downloadPoster()">Unduh PNG</button>
-  </div>
-
-  <canvas id="poster"></canvas>
-  <div id="msg"></div>
 </div>
+
+<div class="btns">
+  <button class="btn btn-primary" onclick="buildPoster()">🔄 Update Poster</button>
+  <button class="btn btn-dl" onclick="downloadPoster()">⬇️ Unduh PNG</button>
+</div>
+
+<div class="section-label" style="margin-bottom:6px">Debug Info</div>
+<div id="debugStr" class="debug">—</div>
+
+<canvas id="poster"></canvas>
+<div id="msg"></div>
 
 <script>
 const DEFAULT_QRIS = "00020101021126570011ID.DANA.WWW011893600915354846259702095484625970303UMI51440014ID.CO.QRIS.WWW0215ID10233009415570303UMI5204561153033605802ID5909Fx Market6015Kota Yogyakarta6105551126304B2AA";
 
-function toggleCustomQr(){
-  const on = document.getElementById("customQrToggle").checked;
-  document.getElementById("customQrSection").style.display = on ? "block" : "none";
+function crc16(s) {
+  let c = 0xFFFF;
+  for (let i = 0; i < s.length; i++) {
+    c ^= s.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) { c = (c & 0x8000) ? ((c << 1) ^ 0x1021) : (c << 1); c &= 0xFFFF; }
+  }
+  return c.toString(16).toUpperCase().padStart(4, '0');
 }
 
-function crc16(s){
-  let c=0xFFFF;
-  for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++){c=(c&0x8000)?((c<<1)^0x1021):(c<<1);c&=0xFFFF;}}
-  return c.toString(16).toUpperCase().padStart(4,'0');
+function parseTLV(str) {
+  const body = str.endsWith(str.slice(-4)) ? str.slice(0, -4) : str;
+  const fields = [];
+  let i = 0;
+  while (i < body.length) {
+    if (i + 4 > body.length) break;
+    const tag = body.substring(i, i + 2);
+    if (tag === "63") break;
+    const lenStr = body.substring(i + 2, i + 4);
+    const len = parseInt(lenStr);
+    if (isNaN(len) || len < 0) break;
+    if (i + 4 + len > body.length) break;
+    const val = body.substring(i + 4, i + 4 + len);
+    fields.push({ tag, val });
+    i += 4 + len;
+  }
+  return fields;
 }
 
-function makeQRIS(amount,merchant){
-  let q=DEFAULT_QRIS.slice(0,-4);
-  const ml=unescape(encodeURIComponent(merchant)).length;
-  q=q.replace(/59\d{2}[^6]+6015/,"59"+ml.toString().padStart(2,'0')+merchant+"6015");
-  if(amount){const a=amount.toString();q=q.replace("5802ID","54"+a.length.toString().padStart(2,'0')+a+"5802ID");}
-  return q+crc16(q);
+function buildTLV(fields) {
+  let q = fields.map(f => f.tag + f.val.length.toString().padStart(2, '0') + f.val).join('');
+  q += "6304";
+  return q + crc16(q);
 }
 
-function buildPoster(){
-  const merchant = document.getElementById("merchant").value.trim() || "Fx Market";
+// Bersihkan karakter non-ASCII agar tidak rusak TLV
+function sanitizeName(name) {
+  return name.replace(/[^\x20-\x7E]/g, '').trim();
+}
+
+// Tanpa limit — encode nama penuh
+function qrName(name) {
+  return sanitizeName(name);
+}
+
+function updateCharHint() {
+  const name = document.getElementById('merchant').value;
+  const clean = sanitizeName(name);
+  const hint = document.getElementById('charHint');
+  hint.className = 'char-hint ok';
+  hint.textContent = clean.length + ' karakter ✅ (encode penuh ke QR)';
+}
+
+function switchMode(val) {
+  document.getElementById("customSection").style.display = val === "custom" ? "block" : "none";
+}
+
+function onCustomInput() {
+  const str = document.getElementById("customQr").value.trim();
+  if (!str) return;
+  const fields = parseTLV(str);
+  const f59 = fields.find(f => f.tag === "59");
+  const f54 = fields.find(f => f.tag === "54");
+  const nmidMatch = str.match(/0215(ID\w+)/);
+  if (f59) document.getElementById("merchant").value = f59.val;
+  if (f54) document.getElementById("amount").value = parseInt(f54.val);
+  if (nmidMatch) document.getElementById("nmid").value = nmidMatch[1];
+  updateCharHint();
+}
+
+function buildFinalQRIS(merchantRaw, amount, base) {
+  // Untuk QR encode: nama dipotong 25 char, dibersihkan
+  const merchantQR = qrName(merchantRaw);
+
+  let fields = parseTLV(base);
+
+  // Ganti field 59 dengan nama yang sudah dipotong (standar QRIS)
+  const i59 = fields.findIndex(f => f.tag === "59");
+  if (i59 !== -1) {
+    fields[i59].val = merchantQR;
+  } else {
+    // Sisipkan sebelum field 60 kalau tidak ada
+    const i60 = fields.findIndex(f => f.tag === "60");
+    const entry = { tag: "59", val: merchantQR };
+    if (i60 !== -1) fields.splice(i60, 0, entry);
+    else fields.push(entry);
+  }
+
+  // Hapus field 54, sisipkan sebelum 58 jika ada nominal
+  fields = fields.filter(f => f.tag !== "54");
+  if (amount) {
+    const i58 = fields.findIndex(f => f.tag === "58");
+    const entry = { tag: "54", val: String(amount) };
+    if (i58 !== -1) fields.splice(i58, 0, entry);
+    else fields.push(entry);
+  }
+
+  return buildTLV(fields);
+}
+
+function buildPoster() {
+  const merchantRaw = document.getElementById("merchant").value.trim() || "Fx Market";
   const amtRaw = document.getElementById("amount").value;
   const amount = amtRaw ? parseInt(amtRaw) : null;
   const nmid = document.getElementById("nmid").value.trim() || "ID1023300941557";
-  const useCustom = document.getElementById("customQrToggle").checked;
-  const customStr = document.getElementById("customQr").value.trim();
 
-  let qrisStr;
-  if(useCustom && customStr){
-    qrisStr = customStr;
-  } else {
-    qrisStr = makeQRIS(amount, merchant);
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  let base = DEFAULT_QRIS;
+  if (mode === "custom") {
+    const custom = document.getElementById("customQr").value.trim();
+    if (custom) base = custom;
   }
 
-  const W=595,H=842;
-  const poster=document.getElementById("poster");
-  poster.width=W;poster.height=H;
-  const ctx=poster.getContext("2d");
+  const qrisStr = buildFinalQRIS(merchantRaw, amount, base);
 
-  QRCode.toDataURL(qrisStr,{width:300,margin:1,color:{dark:"#000",light:"#fff"}},function(err,qrUrl){
-    if(err){document.getElementById("msg").textContent="QR error: "+err;return;}
-    const qrImg=new Image();
-    qrImg.onload=function(){drawPoster(ctx,W,H,qrImg,merchant,amount,nmid);};
-    qrImg.src=qrUrl;
+  // Debug
+  const check = parseTLV(qrisStr);
+  const c59 = check.find(f => f.tag === "59");
+  const c54 = check.find(f => f.tag === "54");
+  const c60 = check.find(f => f.tag === "60");
+  const crcOK = qrisStr.slice(-4) === crc16(qrisStr.slice(0, -4));
+  const merchantQR = qrName(merchantRaw);
+
+  document.getElementById("debugStr").innerHTML =
+    "<b>Nama di poster:</b> " + merchantRaw + "<br>" +
+    "<b>Nama di QR (encode):</b> " + merchantQR + " ✅<br>" +
+    "<b>59 merchant (TLV):</b> " + (c59 ? c59.val : "—") + " &nbsp;|&nbsp; " +
+    "<b>60 kota:</b> " + (c60 ? c60.val : "—") + " &nbsp;|&nbsp; " +
+    "<b>54 nominal:</b> " + (c54 ? c54.val : "—") + "<br>" +
+    "<b>CRC:</b> " + (crcOK ? "✅ valid" : "❌ tidak valid") + "<br>" +
+    "<b>String:</b> " + qrisStr;
+
+  const W = 595, H = 842;
+  const poster = document.getElementById("poster");
+  poster.width = W; poster.height = H;
+  const ctx = poster.getContext("2d");
+
+  QRCode.toDataURL(qrisStr, { width: 300, margin: 1, color: { dark: "#000", light: "#fff" } }, function(err, qrUrl) {
+    if (err) { document.getElementById("msg").textContent = "QR error: " + err; return; }
+    const img = new Image();
+    img.onload = function() { drawPoster(ctx, W, H, img, merchantRaw, amount, nmid, merchantQR); };
+    img.src = qrUrl;
   });
 }
 
-function drawPoster(ctx,W,H,qrImg,merchant,amount,nmid){
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);
-
-  ctx.strokeStyle="rgba(200,200,200,0.25)";ctx.lineWidth=0.5;
-  const gs=22;
-  for(let x=W*0.45;x<W+10;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for(let y=0;y<H+10;y+=gs){ctx.beginPath();ctx.moveTo(W*0.45,y);ctx.lineTo(W,y);ctx.stroke();}
-  ctx.strokeStyle="rgba(180,180,180,0.18)";ctx.lineWidth=1;
-  const b=gs;
-  for(let gx=W*0.5;gx<W-b;gx+=b*2){
-    for(let gy=20;gy<H-b;gy+=b*2){
-      if(Math.random()>0.55){ctx.strokeRect(gx,gy,b*0.8,b*0.8);}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  // Wrap long merchant name
+  const words = text.split(' ');
+  let line = '';
+  let lines = [];
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + ' ';
+    } else {
+      line = testLine;
     }
   }
-
-  ctx.fillStyle="#c0272d";
-  ctx.beginPath();ctx.moveTo(0,120);ctx.lineTo(0,320);ctx.lineTo(160,320);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(0,220);ctx.lineTo(0,380);ctx.lineTo(110,380);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(W,H-160);ctx.lineTo(W,H);ctx.lineTo(W-220,H);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(W,H-240);ctx.lineTo(W,H-80);ctx.lineTo(W-60,H-80);ctx.closePath();ctx.fill();
-
-  ctx.strokeStyle="#222";ctx.lineWidth=2.5;
-  ctx.strokeRect(28,22,60,46);
-  ctx.fillStyle="#c0272d";ctx.fillRect(28,22,14,46);
-  ctx.fillStyle="#c0272d";ctx.fillRect(28,22,60,12);
-  ctx.fillStyle="#fff";
-  ctx.font="bold 26px serif";ctx.fillText("QRIS",46,55);
-
-  ctx.fillStyle="#222";
-  ctx.font="bold 13px sans-serif";ctx.fillText("QR Code Standar",96,38);
-  ctx.font="13px sans-serif";ctx.fillText("Pembayaran Nasional",96,56);
-
-  ctx.fillStyle="#c0272d";ctx.font="bold 15px serif";ctx.textAlign="right";
-  ctx.fillText("GPN",W-24,50);
-  ctx.font="9px sans-serif";ctx.fillStyle="#555";
-  ctx.fillText("Gerbang Pembayaran",W-10,64);
-  ctx.fillText("Nasional",W-10,75);
-  ctx.textAlign="left";
-
-  ctx.fillStyle="#111";ctx.font="bold 38px serif";ctx.textAlign="center";
-  ctx.fillText(merchant,W/2,210);
-  ctx.font="22px sans-serif";ctx.fillStyle="#333";
-  ctx.fillText("NMID : "+nmid,W/2,250);
-  ctx.font="bold 26px sans-serif";ctx.fillStyle="#222";
-  ctx.fillText("A01",W/2,288);
-  ctx.textAlign="left";
-
-  const qrSize=260,qrX=(W-qrSize)/2,qrY=310;
-  ctx.fillStyle="#fff";ctx.fillRect(qrX-6,qrY-6,qrSize+12,qrSize+12);
-  ctx.strokeStyle="#222";ctx.lineWidth=1.5;
-  ctx.strokeRect(qrX-6,qrY-6,qrSize+12,qrSize+12);
-  ctx.drawImage(qrImg,qrX,qrY,qrSize,qrSize);
-
-  ctx.fillStyle="#111";ctx.font="bold 18px sans-serif";ctx.textAlign="center";
-  ctx.fillText("SATU QRIS UNTUK SEMUA",W/2,610);
-  ctx.font="14px sans-serif";ctx.fillStyle="#555";
-  ctx.fillText("Cek aplikasi penyelenggara di:",W/2,636);
-  ctx.fillStyle="#c0272d";ctx.font="14px sans-serif";
-  ctx.fillText("www.aspi-qris.id",W/2,656);
-
-  if(amount){
-    ctx.fillStyle="#111";ctx.font="bold 16px sans-serif";
-    ctx.fillText("Nominal: Rp "+amount.toLocaleString('id-ID'),W/2,682);
-  }
-
-  ctx.textAlign="right";ctx.fillStyle="#333";ctx.font="bold 11px sans-serif";
-  ctx.fillText("Cara bayar dengan QRIS:",W-20,720);
-  ctx.font="10px sans-serif";ctx.fillStyle="#555";
-  ctx.fillText("Buka Aplikasi · Scan dan Cek · Bayar",W-20,736);
-
-  ctx.textAlign="left";ctx.fillStyle="#555";ctx.font="11px sans-serif";
-  ctx.fillText("Dicetak oleh: 93600915",20,H-36);
-  ctx.fillText("Versi cetak: 1.0.12.05.26",20,H-20);
-
-  ctx.textAlign="left";
-  document.getElementById("msg").textContent = "Poster QRIS berhasil dibuat";
+  lines.push(line.trim());
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+  return lines.length;
 }
 
-function downloadPoster(){
-  const c=document.getElementById("poster");
-  const a=document.createElement("a");
-  a.download="QRIS_"+document.getElementById("merchant").value.trim().replace(/\s+/g,"_")+".png";
-  a.href=c.toDataURL("image/png");
+function drawPoster(ctx, W, H, qrImg, merchant, amount, nmid, merchantQR) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+
+  // Grid background
+  ctx.strokeStyle = "rgba(200,200,200,0.25)"; ctx.lineWidth = 0.5;
+  const gs = 22;
+  for (let x = W * 0.45; x < W + 10; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H + 10; y += gs) { ctx.beginPath(); ctx.moveTo(W * 0.45, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // Decorative triangles
+  ctx.fillStyle = "#c0272d";
+  ctx.beginPath(); ctx.moveTo(0, 120); ctx.lineTo(0, 320); ctx.lineTo(160, 320); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, 220); ctx.lineTo(0, 380); ctx.lineTo(110, 380); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(W, H - 160); ctx.lineTo(W, H); ctx.lineTo(W - 220, H); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(W, H - 240); ctx.lineTo(W, H - 80); ctx.lineTo(W - 60, H - 80); ctx.closePath(); ctx.fill();
+
+  // Header QRIS box
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 2.5; ctx.strokeRect(28, 22, 60, 46);
+  ctx.fillStyle = "#c0272d"; ctx.fillRect(28, 22, 14, 46); ctx.fillRect(28, 22, 60, 12);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 26px serif"; ctx.fillText("QRIS", 46, 55);
+  ctx.fillStyle = "#222"; ctx.font = "bold 13px sans-serif"; ctx.fillText("QR Code Standar", 96, 38);
+  ctx.font = "13px sans-serif"; ctx.fillText("Pembayaran Nasional", 96, 56);
+  ctx.fillStyle = "#c0272d"; ctx.font = "bold 15px serif"; ctx.textAlign = "right";
+  ctx.fillText("GPN", W - 24, 50);
+  ctx.font = "9px sans-serif"; ctx.fillStyle = "#555";
+  ctx.fillText("Gerbang Pembayaran", W - 10, 64); ctx.fillText("Nasional", W - 10, 75);
+  ctx.textAlign = "left";
+
+  // Merchant name — tampilkan nama asli (bisa panjang, di-wrap)
+  ctx.fillStyle = "#111";
+  ctx.textAlign = "center";
+
+  // Auto-scale font size berdasarkan panjang nama
+  let fontSize = 36;
+  if (merchant.length > 20) fontSize = 28;
+  if (merchant.length > 28) fontSize = 22;
+  if (merchant.length > 36) fontSize = 18;
+
+  ctx.font = "bold " + fontSize + "px serif";
+  const lineCount = wrapText(ctx, merchant, W / 2, 200, W - 80, fontSize + 8);
+
+  // NMID & A01
+  const afterName = 200 + (lineCount - 1) * (fontSize + 8) + 30;
+  ctx.font = "18px sans-serif"; ctx.fillStyle = "#333";
+  ctx.fillText("NMID : " + nmid, W / 2, afterName);
+  ctx.font = "bold 22px sans-serif"; ctx.fillStyle = "#222";
+  ctx.fillText("A01", W / 2, afterName + 30);
+  ctx.textAlign = "left";
+
+  // QR code
+  const qrSize = 260, qrX = (W - qrSize) / 2, qrY = afterName + 50;
+  ctx.fillStyle = "#fff"; ctx.fillRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12);
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1.5; ctx.strokeRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12);
+  ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+  // Info di bawah QR
+  const belowQR = qrY + qrSize + 30;
+  ctx.fillStyle = "#111"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+  ctx.fillText("SATU QRIS UNTUK SEMUA", W / 2, belowQR);
+  ctx.font = "13px sans-serif"; ctx.fillStyle = "#555";
+  ctx.fillText("Cek aplikasi penyelenggara di:", W / 2, belowQR + 22);
+  ctx.fillStyle = "#c0272d"; ctx.font = "13px sans-serif";
+  ctx.fillText("www.aspi-qris.id", W / 2, belowQR + 42);
+
+  if (amount) {
+    ctx.fillStyle = "#111"; ctx.font = "bold 15px sans-serif";
+    ctx.fillText("Nominal: Rp " + amount.toLocaleString('id-ID'), W / 2, belowQR + 66);
+  }
+
+
+
+  // Footer
+  ctx.textAlign = "right"; ctx.fillStyle = "#333"; ctx.font = "bold 11px sans-serif";
+  ctx.fillText("Cara bayar dengan QRIS:", W - 20, H - 50);
+  ctx.font = "10px sans-serif"; ctx.fillStyle = "#555";
+  ctx.fillText("Buka Aplikasi · Scan dan Cek · Bayar", W - 20, H - 36);
+  ctx.textAlign = "left"; ctx.fillStyle = "#555"; ctx.font = "11px sans-serif";
+  ctx.fillText("Dicetak oleh: 93600915", 20, H - 36);
+  ctx.fillText("Versi cetak: 1.0.12.05.26", 20, H - 20);
+
+  document.getElementById("msg").style.color = "green";
+  document.getElementById("msg").textContent = "Poster berhasil dibuat — QR encode: \"" + merchantQR + "\"";
+}
+
+function downloadPoster() {
+  const merchant = document.getElementById("merchant").value.trim() || "Fx Market";
+  const a = document.createElement("a");
+  a.download = "QRIS_" + merchant.replace(/\s+/g, "_").substring(0, 40) + ".png";
+  a.href = document.getElementById("poster").toDataURL("image/png");
   a.click();
 }
 
 buildPoster();
 </script>
+</body>
+</html>
